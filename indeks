@@ -1,0 +1,512 @@
+import { useState } from "react";
+
+const products = [
+  { id: 1, name: "Nike Air Max", price: 1200000, emoji: "👟" },
+  { id: 2, name: "Adidas Ultraboost", price: 1500000, emoji: "🏃" },
+  { id: 3, name: "Puma Sport", price: 900000, emoji: "⚡" },
+  { id: 4, name: "Converse Classic", price: 750000, emoji: "⭐" },
+  { id: 5, name: "Vans Old Skool", price: 850000, emoji: "🎿" },
+  { id: 6, name: "New Balance 574", price: 1100000, emoji: "🔵" },
+];
+
+const fmt = (n) => "Rp " + n.toLocaleString("id-ID");
+
+export default function ShoeStorePOS() {
+  const [cart, setCart] = useState([]);
+  const [paid, setPaid] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const addToCart = (product) => {
+    setSaved(false);
+    setCart((prev) => {
+      const exists = prev.find((i) => i.id === product.id);
+      return exists
+        ? prev.map((i) => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
+        : [...prev, { ...product, qty: 1 }];
+    });
+  };
+
+  const changeQty = (id, delta) => {
+    setCart((prev) =>
+      prev.map((i) => i.id === id ? { ...i, qty: i.qty + delta } : i)
+        .filter((i) => i.qty > 0)
+    );
+  };
+
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const paidNum = Number(paid) || 0;
+  const change = paidNum - total;
+  const canSave = cart.length > 0 && paidNum >= total;
+
+  const handleSave = () => {
+    if (!canSave) return;
+    setSaved(true);
+    setCart([]);
+    setPaid("");
+  };
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#0f0f0f",
+      fontFamily: "'DM Mono', 'Courier New', monospace",
+      color: "#f5f0e8",
+      padding: "0",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700;900&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .pos-grid {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          grid-template-rows: auto 1fr;
+          height: 100vh;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .header {
+          grid-column: 1 / -1;
+          padding: 24px 32px 20px;
+          border-bottom: 1px solid #2a2a2a;
+          display: flex;
+          align-items: baseline;
+          gap: 16px;
+        }
+
+        .header-title {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 28px;
+          font-weight: 900;
+          color: #f5f0e8;
+          letter-spacing: -0.5px;
+        }
+
+        .header-sub {
+          font-size: 11px;
+          color: #555;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+        }
+
+        .badge {
+          margin-left: auto;
+          font-size: 10px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #c8a96e;
+          border: 1px solid #c8a96e44;
+          padding: 4px 10px;
+          border-radius: 2px;
+        }
+
+        /* LEFT: product grid */
+        .products-panel {
+          padding: 24px 32px;
+          overflow-y: auto;
+          border-right: 1px solid #2a2a2a;
+        }
+
+        .section-label {
+          font-size: 10px;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #555;
+          margin-bottom: 16px;
+        }
+
+        .product-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+
+        .product-card {
+          background: #181818;
+          border: 1px solid #222;
+          border-radius: 4px;
+          padding: 16px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .product-card:hover {
+          border-color: #c8a96e;
+          background: #1e1a14;
+        }
+
+        .product-card:hover .add-hint {
+          opacity: 1;
+        }
+
+        .product-card:active {
+          transform: scale(0.98);
+        }
+
+        .product-emoji {
+          font-size: 32px;
+          display: block;
+          margin-bottom: 10px;
+          filter: grayscale(0.3);
+        }
+
+        .product-name {
+          font-size: 12px;
+          font-weight: 500;
+          color: #ddd;
+          margin-bottom: 4px;
+          letter-spacing: 0.3px;
+        }
+
+        .product-price {
+          font-size: 11px;
+          color: #c8a96e;
+          letter-spacing: 0.5px;
+        }
+
+        .add-hint {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          background: #c8a96e;
+          color: #0f0f0f;
+          text-align: center;
+          font-size: 10px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          padding: 6px;
+          opacity: 0;
+          transition: opacity 0.15s;
+          font-weight: 500;
+        }
+
+        /* RIGHT: cart panel */
+        .cart-panel {
+          display: flex;
+          flex-direction: column;
+          padding: 24px 20px;
+          background: #111;
+        }
+
+        .cart-items {
+          flex: 1;
+          overflow-y: auto;
+          margin-bottom: 16px;
+        }
+
+        .cart-empty {
+          color: #333;
+          font-size: 11px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          text-align: center;
+          margin-top: 40px;
+        }
+
+        .cart-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 0;
+          border-bottom: 1px solid #1e1e1e;
+        }
+
+        .cart-item-name {
+          flex: 1;
+          font-size: 12px;
+          color: #ccc;
+        }
+
+        .cart-item-sub {
+          font-size: 10px;
+          color: #444;
+          margin-top: 2px;
+        }
+
+        .qty-ctrl {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .qty-btn {
+          width: 22px;
+          height: 22px;
+          border-radius: 2px;
+          border: 1px solid #333;
+          background: #1a1a1a;
+          color: #aaa;
+          cursor: pointer;
+          font-size: 14px;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.1s;
+        }
+
+        .qty-btn:hover { border-color: #c8a96e; color: #c8a96e; }
+
+        .qty-num {
+          font-size: 13px;
+          font-weight: 500;
+          min-width: 18px;
+          text-align: center;
+          color: #f5f0e8;
+        }
+
+        .cart-item-total {
+          font-size: 11px;
+          color: #c8a96e;
+          min-width: 80px;
+          text-align: right;
+        }
+
+        .cart-footer {
+          border-top: 1px solid #2a2a2a;
+          padding-top: 16px;
+        }
+
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          margin-bottom: 16px;
+        }
+
+        .total-label {
+          font-size: 10px;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #555;
+        }
+
+        .total-value {
+          font-family: 'Playfair Display', serif;
+          font-size: 22px;
+          color: #f5f0e8;
+        }
+
+        .input-row {
+          margin-bottom: 10px;
+        }
+
+        .input-label {
+          font-size: 10px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #555;
+          margin-bottom: 6px;
+          display: block;
+        }
+
+        .money-input {
+          width: 100%;
+          background: #181818;
+          border: 1px solid #2a2a2a;
+          border-radius: 3px;
+          color: #f5f0e8;
+          font-family: 'DM Mono', monospace;
+          font-size: 14px;
+          padding: 10px 12px;
+          outline: none;
+          transition: border-color 0.15s;
+        }
+
+        .money-input:focus { border-color: #c8a96e; }
+        .money-input::placeholder { color: #333; }
+
+        .change-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 0;
+          margin-bottom: 14px;
+        }
+
+        .change-label {
+          font-size: 10px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #555;
+        }
+
+        .change-value {
+          font-size: 14px;
+          color: ${change >= 0 && paidNum > 0 ? "#6dbb8a" : "#555"};
+          font-weight: 500;
+        }
+
+        .save-btn {
+          width: 100%;
+          padding: 14px;
+          background: ${canSave ? "#c8a96e" : "#1a1a1a"};
+          color: ${canSave ? "#0f0f0f" : "#333"};
+          border: none;
+          border-radius: 3px;
+          font-family: 'DM Mono', monospace;
+          font-size: 11px;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          cursor: ${canSave ? "pointer" : "not-allowed"};
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+
+        .save-btn:hover { background: ${canSave ? "#d4b87c" : "#1a1a1a"}; }
+
+        .success-toast {
+          position: fixed;
+          top: 24px; left: 50%; transform: translateX(-50%);
+          background: #6dbb8a;
+          color: #0a2012;
+          padding: 12px 28px;
+          border-radius: 3px;
+          font-size: 11px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          font-weight: 500;
+          animation: fadeInOut 2.5s ease forwards;
+          z-index: 999;
+        }
+
+        @keyframes fadeInOut {
+          0% { opacity: 0; top: 16px; }
+          15% { opacity: 1; top: 24px; }
+          75% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+
+        .cart-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #c8a96e;
+          color: #0f0f0f;
+          border-radius: 50%;
+          width: 18px;
+          height: 18px;
+          font-size: 10px;
+          font-weight: 500;
+          margin-left: 6px;
+          vertical-align: middle;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+      `}</style>
+
+      {saved && (
+        <div className="success-toast">Transaksi berhasil disimpan</div>
+      )}
+
+      <div className="pos-grid">
+        {/* Header */}
+        <header className="header">
+          <span className="header-title">Kasir</span>
+          <span className="header-sub">Toko Sepatu</span>
+          <span className="badge">POS v1.0</span>
+        </header>
+
+        {/* Products */}
+        <main className="products-panel">
+          <p className="section-label">Pilih Produk</p>
+          <div className="product-grid">
+            {products.map((p) => {
+              const inCart = cart.find((i) => i.id === p.id);
+              return (
+                <div
+                  key={p.id}
+                  className="product-card"
+                  onClick={() => addToCart(p)}
+                >
+                  <span className="product-emoji">{p.emoji}</span>
+                  <div className="product-name">{p.name}</div>
+                  <div className="product-price">{fmt(p.price)}</div>
+                  {inCart && (
+                    <div style={{
+                      position: "absolute", top: 10, right: 10,
+                      background: "#c8a96e", color: "#0f0f0f",
+                      borderRadius: "50%", width: 20, height: 20,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, fontWeight: 500,
+                    }}>
+                      {inCart.qty}
+                    </div>
+                  )}
+                  <div className="add-hint">+ Tambah</div>
+                </div>
+              );
+            })}
+          </div>
+        </main>
+
+        {/* Cart */}
+        <aside className="cart-panel">
+          <p className="section-label" style={{ marginBottom: 12 }}>
+            Keranjang
+            {cart.length > 0 && (
+              <span className="cart-count">
+                {cart.reduce((s, i) => s + i.qty, 0)}
+              </span>
+            )}
+          </p>
+
+          <div className="cart-items">
+            {cart.length === 0 ? (
+              <p className="cart-empty">Keranjang kosong</p>
+            ) : (
+              cart.map((item) => (
+                <div key={item.id} className="cart-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="cart-item-name">{item.name}</div>
+                    <div className="cart-item-sub">{fmt(item.price)}</div>
+                  </div>
+                  <div className="qty-ctrl">
+                    <button className="qty-btn" onClick={() => changeQty(item.id, -1)}>−</button>
+                    <span className="qty-num">{item.qty}</span>
+                    <button className="qty-btn" onClick={() => changeQty(item.id, +1)}>+</button>
+                  </div>
+                  <div className="cart-item-total">{fmt(item.price * item.qty)}</div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="cart-footer">
+            <div className="total-row">
+              <span className="total-label">Total</span>
+              <span className="total-value">{fmt(total)}</span>
+            </div>
+
+            <div className="input-row">
+              <label className="input-label">Uang Pembayaran</label>
+              <input
+                className="money-input"
+                type="number"
+                placeholder="0"
+                value={paid}
+                onChange={(e) => setPaid(e.target.value)}
+              />
+            </div>
+
+            <div className="change-row">
+              <span className="change-label">Kembalian</span>
+              <span className="change-value">
+                {paidNum > 0 ? fmt(Math.max(0, change)) : "—"}
+              </span>
+            </div>
+
+            <button className="save-btn" onClick={handleSave}>
+              Simpan Transaksi
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
